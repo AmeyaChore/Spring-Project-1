@@ -56,7 +56,7 @@ public class JwtTokenProvider {
         Claims claims=Jwts.parserBuilder()
                 .setSigningKey(key())
                 .build()
-                .parseClaimsJwt(token)
+                .parseClaimsJws(token)
                 .getBody();
 
         String username= claims.getSubject();
@@ -70,7 +70,7 @@ public class JwtTokenProvider {
                     .build()
                     .parse(token);
             return true;
-        }  catch (MalformedJwtException e) {
+            } catch (MalformedJwtException e) {
             throw new BlogAPIException(HttpStatus.BAD_REQUEST,"Invalid JWT token");
         }catch (ExpiredJwtException e) {
             throw new BlogAPIException(HttpStatus.BAD_REQUEST,"Expired JWt token");

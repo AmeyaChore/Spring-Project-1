@@ -1,9 +1,11 @@
 package com.springboot.blog.service.impl;
 
+import com.springboot.blog.entity.Category;
 import com.springboot.blog.entity.Post;
 import com.springboot.blog.exceptons.ResourceNotFoundException;
 import com.springboot.blog.payload.PostDto;
 import com.springboot.blog.payload.PostResponse;
+import com.springboot.blog.repository.CategoryRepository;
 import com.springboot.blog.repository.PostRepository;
 import com.springboot.blog.service.PostService;
 import org.modelmapper.ModelMapper;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -23,23 +26,28 @@ public class PostServiceImpl implements PostService {
     //@Autowired  // if there is only one parameter we can omit @Autowired we can use Constructor to inject dependency
     private PostRepository postRepository;
     private ModelMapper mapper;
+    private CategoryRepository categoryRepository;
 
-    public PostServiceImpl(PostRepository postRepository,ModelMapper mapper) {
+    public PostServiceImpl(PostRepository postRepository, ModelMapper mapper, CategoryRepository categoryRepository) {
         this.postRepository = postRepository;
-        this.mapper=mapper;
+        this.mapper = mapper;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
     public PostDto createPost(PostDto postDto) {
 
+        Category category=categoryRepository.findById(postDto.getCategoryId())
+                .orElseThrow(()-> new ResourceNotFoundException("Category","Id", postDto.getCategoryId()));
+
         //Convert DTO to Entity
-        Post post=new Post();
-        post=mapToEntity(postDto);
+        Post post=mapToEntity(postDto);
+        post.setCategory(category);
         Post savedPost=postRepository.save(post);
 
         //Convert entity to Dto
-        PostDto postResponse=new PostDto();
-        postResponse=mapToDto(savedPost);
+        PostDto postResponse=mapToDto(savedPost);
+        //postResponse.setCategoryId(savedPost.getCategory().getId());
         return postResponse;
     }
 
@@ -80,9 +88,14 @@ public class PostServiceImpl implements PostService {
         //get Post By Id from the Database and if Post does not exists with given id we will return exception
         Post post=postRepository.findById(postId).orElseThrow(()->new ResourceNotFoundException("Post","id",postId));
 
+        //get Category Object from the Database
+        Category category=categoryRepository.findById(postDto.getCategoryId())
+                .orElseThrow(()->new ResourceNotFoundException("Category","Id",postDto.getCategoryId()));
+
         post.setTitle(postDto.getTitle());
         post.setDescription(postDto.getDescription());
         post.setContent(postDto.getContent());
+        post.setCategory(category);
 
         Post updatedPost=postRepository.save(post);
         return mapToDto(updatedPost);
@@ -92,6 +105,17 @@ public class PostServiceImpl implements PostService {
     public void deletePost(long postId) {
         Post post=postRepository.findById(postId).orElseThrow(()->new ResourceNotFoundException("Post","id",postId));
         postRepository.deleteById(postId);
+    }
+
+    @Override
+    public List<PostDto> getPostByCategoryId(long categoryId) {
+        Category category=categoryRepository.findById(categoryId)
+                .orElseThrow(()-> new ResourceNotFoundException("Category","Id",categoryId));
+
+        List<Post> listOfPosts=postRepository.findByCategoryId(categoryId);
+        //List<PostDto> content= listOfPosts.stream().map(post->mapToDto(post)).collect(Collectors.toList());
+        return listOfPosts.stream().map((post)->mapToDto(post))
+                .collect(Collectors.toList());
     }
 
 
